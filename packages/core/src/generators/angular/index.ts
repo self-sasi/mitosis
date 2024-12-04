@@ -55,6 +55,7 @@ import {
   makeReactiveState,
   transformState,
 } from './helpers';
+import { standardNgEvents } from './ng_constants';
 import {
   AngularBlockOptions,
   BUILT_IN_COMPONENTS,
@@ -195,6 +196,11 @@ const processEventBinding = (key: string, code: string, nodeName: string, custom
   let event = key.replace('on', '');
   event = event.charAt(0).toLowerCase() + event.slice(1);
 
+  // if event is not a standard angular event after removing 'on' and lowercasing, preserve original state
+  if (!standardNgEvents.has(event.toLowerCase())) {
+    event = key;
+  }
+
   // TODO: proper babel transform to replace. Util for this
   const eventName = customArg;
   const regexp = new RegExp(
@@ -225,8 +231,10 @@ const stringifyBinding =
 
     if (keyToUse.startsWith('on')) {
       const { event, value } = processEventBinding(keyToUse, code, node.name, cusArgs[0]);
-      // Angular events are all lowerCased
-      return ` (${event.toLowerCase()})="${value}"`;
+      // if lowercase event is not a standard ng event, preserve original event name
+      return standardNgEvents.has(event.toLowerCase())
+        ? ` (${event.toLowerCase()})="${value}"`
+        : ` (${event})="${value}"`;
     } else if (keyToUse === 'class') {
       return ` [class]="${code}" `;
     } else if (keyToUse === 'ref' || keyToUse === 'spreadRef') {
